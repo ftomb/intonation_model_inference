@@ -1,0 +1,105 @@
+
+def phone_set_path = "src/OALD.json"
+def frozen_model = "src/model/frozen_model_2"
+def input_dictionaries = "src/model/inference_dictionaries.json"
+def sign_dictionary = "src/model/sign_labels_dictionary.json"
+def magn_dictionary = "src/model/magn_labels_dictionary.json"
+
+
+task syllabify(type: PyExec){
+    srcFiles = [file("src/textgrid"), file(phone_set_path)]
+    destDirs = file("$buildDir/08_textgrid_syllables")
+    pyFile = file("scripts/07_syllabify.py")
+    args += srcFiles + [destDirs]
+}
+
+task add_onset_rhymes(type: PyExec){
+    dependsOn syllabify
+    srcFiles = [file("$buildDir/08_textgrid_syllables")]
+    destDirs = file("$buildDir/09_textgrid_onsets_rhymes")
+    pyFile = file("scripts/08_add_onsets_rhymes.py")
+    args += srcFiles + [destDirs]
+}
+
+task add_pos(type: PyExec){
+    dependsOn add_onset_rhymes
+    srcFiles = [file("$buildDir/09_textgrid_onsets_rhymes"), file("src/txt")]
+    destDirs = file("$buildDir/10_textgrid_pos")
+    pyFile = file("scripts/09_add_POS.py")
+    args += srcFiles + [destDirs]
+}
+
+task add_lemmas(type: PyExec){
+    dependsOn add_pos
+    srcFiles = [file("$buildDir/10_textgrid_pos")]
+    destDirs = file("$buildDir/11_textgrid_lemmas")
+    pyFile = file("scripts/10_add_lemmas.py")
+    args += srcFiles + [destDirs]
+}
+
+task add_punctuation(type: PyExec){
+    dependsOn add_lemmas
+    srcFiles = [file("$buildDir/11_textgrid_lemmas"), file("src/txt")]
+    destDirs = file("$buildDir/12_textgrid_punctuation")
+    pyFile = file("scripts/11_add_punctuation.py")
+    args += srcFiles + [destDirs]
+}
+
+task add_silences(type: PyExec){
+    dependsOn add_punctuation
+    srcFiles = [file("$buildDir/12_textgrid_punctuation")]
+    destDirs = file("$buildDir/13_textgrid_silences")
+    pyFile = file("scripts/12_add_silences.py")
+    args += srcFiles + [destDirs]
+}
+
+task extract_f0_timepoints(type: PyExec){
+    dependsOn add_silences
+    srcFiles = [file("$buildDir/13_textgrid_silences")]
+    destDirs = file("$buildDir/14_f0_timepoints")
+    pyFile = file("scripts/13_extract_f0_timepoints.py")
+    args += srcFiles + [destDirs]
+}
+
+task extract_linguistic_labels(type: PyExec){
+    dependsOn add_silences, extract_f0_timepoints
+    srcFiles = [file("$buildDir/14_f0_timepoints"), file("$buildDir/13_textgrid_silences")]
+    destDirs = file("$buildDir/15_linguistic_labels")
+    pyFile = file("scripts/14_extract_linguistic_labels.py")
+    args += srcFiles + [destDirs]
+}
+
+task inference_label_batches(type: PyExec){
+    dependsOn extract_linguistic_labels
+    srcFiles = [file("$buildDir/15_linguistic_labels")]
+    destDirs = [file("$buildDir/29_inference_labels")]
+    pyFile = file("scripts/28_inference_label_batches.py")
+    args += srcFiles + destDirs
+}
+
+task inference_hot_vectors(type: PyExec){
+    dependsOn inference_label_batches
+    srcFiles = [input_dictionaries, file("$buildDir/29_inference_labels")]
+    destDirs = [file("$buildDir/30_inference_batches")]
+    pyFile = file("scripts/29_inference_hot_vectors.py")
+    args += srcFiles + destDirs
+}
+
+task predict_f0_steps(type: PyExec){
+    dependsOn inference_hot_vectors
+    srcFiles = [frozen_model, sign_dictionary, magn_dictionary, file("$buildDir/30_inference_batches")]
+    destDirs = [file("$buildDir/31_predicted_f0_steps")]
+    pyFile = file("scripts/30_predict_f0_steps.py")
+    args += srcFiles + destDirs
+}
+
+task convert_to_hertz(type: PyExec){
+    dependsOn predict_f0_steps
+    srcFiles = [file("$buildDir/14_f0_timepoints"), file("$buildDir/31_predicted_f0_steps")]
+    destDirs = [file("$buildDir/32_synth_f0s")]
+    pyFile = file("scripts/31_convert_steps_to_hertz.py")
+    args += srcFiles + destDirs
+}
+
+
+
