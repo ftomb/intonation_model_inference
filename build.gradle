@@ -1,6 +1,6 @@
 
 def phone_set_path = "src/OALD.json"
-def frozen_model = "src/model/frozen_model_2"
+def frozen_model = "src/model/frozen_model"
 def input_dictionaries = "src/model/inference_dictionaries.json"
 def sign_dictionary = "src/model/sign_labels_dictionary.json"
 def magn_dictionary = "src/model/magn_labels_dictionary.json"
